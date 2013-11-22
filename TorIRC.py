@@ -40,7 +40,7 @@ class LocalIRC(object):
             while self.buffer.find('\n') != -1:
                 line, self.buffer = self.buffer.split('\n', 1)
                 server.send(line)
-                print line
+                #print line
     
     def send(self, msg):
         self.client_ok.send(msg + '\r\n')
@@ -83,7 +83,7 @@ class TorIRC(object):
                         client.send(line)
                 else:
                     client.send(line)
-                print line
+                #print line
     
     def send(self, msg):
         self.tsock.send(msg + '\r\n')
@@ -93,7 +93,7 @@ class TorIRC(object):
 
 if __name__ == "__main__":
     print "== TorIRC =="
-    nick = input("nick:")
+    nick = raw_input("nick:")
     print "Lancement du serveur local"
     client = LocalIRC()
     client.connect()
