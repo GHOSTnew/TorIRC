@@ -17,6 +17,7 @@
 
 import socks
 import socket
+import ssl
 from threading import Thread
 
 class LocalIRC(object):
@@ -46,9 +47,10 @@ class LocalIRC(object):
         self.client_ok.send(msg + '\r\n')
     
 class TorIRC(object):
-    def __init__ (self, host, port, nick, real_name="Anonymous", password=None):
+    def __init__ (self, host, port, nick, ssl=False, real_name="Anonymous", password=None):
         self.host = host
         self.port = port
+        self.ssl = ssl
         self.password = password
         self.nick = nick
         self.real_name = real_name
@@ -61,6 +63,13 @@ class TorIRC(object):
 
     def connect(self):
         self.tsock.connect((self.host, self.port))
+        if self.ssl == True:
+            try:
+                self.tsock = ssl.wrap_socket(self.tsock)
+                self.tsock.do_handshake()
+            except:
+                print "Failed to do ssl handshake"
+            
         self.send('USER ' + self.nick +  ' 2 ' + self.nick +' :' + self.real_name)
         if self.password:
             self.send('PASS ' + self.password)
@@ -88,9 +97,6 @@ class TorIRC(object):
     def send(self, msg):
         self.tsock.send(msg + '\r\n')
 
-    def getData(self):
-        return self.tsock.recv(1024)
-
 if __name__ == "__main__":
     print "== TorIRC =="
     nick = raw_input("nick:")
@@ -98,7 +104,7 @@ if __name__ == "__main__":
     client = LocalIRC()
     client.connect()
     print "Le serveur est maintenant ouvert sur 127.0.0.1 port 20000"
-    server = TorIRC("oghzthm3fgvkh5wo.onion",6667, nick)
+    server = TorIRC("oghzthm3fgvkh5wo.onion",6697, nick, True)
     server.connect()
     Thread(target=client.recv).start()
     Thread(target=server.recv).start()
