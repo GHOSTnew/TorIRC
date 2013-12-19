@@ -42,9 +42,12 @@ class LocalIRC(object):
                 line, self.buffer = self.buffer.split('\n', 1)
                 server.send(line)
                 #print line
+                if line.find('QUIT') != -1:
+                    self.lsock.close()
+                    break
     
     def send(self, msg):
-        self.client_ok.send(msg + '\r\n')
+        self.client_ok.send(msg + '\n')
     
 class TorIRC(object):
     def __init__ (self, host, port, nick, ssl=False, real_name="Anonymous", password=None):
@@ -68,8 +71,7 @@ class TorIRC(object):
                 self.tsock = ssl.wrap_socket(self.tsock)
                 self.tsock.do_handshake()
             except:
-                print "Failed to do ssl handshake"
-            
+                print "Failed to do ssl handshake" 
         self.send('USER ' + self.nick +  ' 2 ' + self.nick +' :' + self.real_name)
         if self.password:
             self.send('PASS ' + self.password)
@@ -93,6 +95,9 @@ class TorIRC(object):
                 else:
                     client.send(line)
                 #print line
+                if line.find('QUIT') != -1:
+                    self.tsock.close()
+                    break
     
     def send(self, msg):
         self.tsock.send(msg + '\r\n')
@@ -102,8 +107,8 @@ if __name__ == "__main__":
     nick = raw_input("nick:")
     print "Lancement du serveur local"
     client = LocalIRC()
-    client.connect()
     print "Le serveur est maintenant ouvert sur 127.0.0.1 port 20000"
+    client.connect()
     server = TorIRC("oghzthm3fgvkh5wo.onion",6697, nick, True)
     server.connect()
     Thread(target=client.recv).start()
