@@ -88,9 +88,6 @@ class TorIRC(object):
                 else:
                     client.send(line)
                 #print line
-                if line.find('QUIT') != -1:
-                    self.tsock.close()
-                    break
     
     def send(self, msg):
         self.tsock.send(msg + '\r\n')
