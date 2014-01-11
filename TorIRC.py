@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import socks
-import socket
-import ssl
+import socks, socket, ssl, time
 from threading import Thread
 
 class LocalIRC(object):
@@ -25,6 +23,7 @@ class LocalIRC(object):
         self.lsock = socket.socket()
         self.buffer = ''
         self.client_ok = None
+        self.nick = None
 
     def connect(self):
         self.lsock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
@@ -41,13 +40,23 @@ class LocalIRC(object):
             while self.buffer.find('\n') != -1:
                 line, self.buffer = self.buffer.split('\n', 1)
                 server.send(line)
-                #print line
+                print "client: " +  line
                 if line.find('QUIT') != -1:
                     self.lsock.close()
+                    server.die()
                     break
+                elif line.find('NICK') != -1:
+                    arg = line.split(" ")
+                    if len(arg) <= 2:
+                        self.nick = arg[1]
+                        print self.nick
     
     def send(self, msg):
         self.client_ok.send(msg + '\n')
+
+    def notice(self, msg):
+        if self.nick:
+            self.send(':Info!TOR@TorIRC NOTICE ' + self.nick + ' :' + msg)
     
 class TorIRC(object):
     def __init__ (self, host, port, ssl=False):
@@ -61,6 +70,8 @@ class TorIRC(object):
         self.tsock = socket.socket()
         self.buffer = ''
 
+        self.last_ping = 0
+
     def connect(self):
         self.tsock.connect((self.host, self.port))
         if self.ssl == True:
@@ -68,7 +79,7 @@ class TorIRC(object):
                 self.tsock = ssl.wrap_socket(self.tsock)
                 self.tsock.do_handshake()
             except:
-                print "Failed to do ssl handshake" 
+                client.notice("\002[\0034-\003] Failed to do ssl handshake")
     
     def recv(self):
         while True:
@@ -82,15 +93,29 @@ class TorIRC(object):
                     message = ':'.join(line.split (':')[2:])
                     msg = message.split( )[0]
                     if msg.startswith("\001") & msg.endswith("\001"):
-                        print "/!\ CTCP reçu mais rejeté par sécurité :)"
+                        client.notice("\002[\0034-\003] CTCP reçu mais rejeté par sécurité")
                     else:
                         client.send(line)
+                elif line.find('PONG') != -1:
+                    self.last_ping = int(time.time())
+                    client.send(line)
                 else:
                     client.send(line)
-                #print line
+                print "server: " + line
     
     def send(self, msg):
         self.tsock.send(msg + '\r\n')
+
+    def ping_time_out(self):
+        while True:
+            now = int(time.time())
+            if now - self.last_ping > 60*4:
+                client.send("QUIT :ping time out")
+                break
+            time.sleep(2)
+
+    def die(self):
+        self.tsock.close()
 
 if __name__ == "__main__":
     print "== TorIRC =="
@@ -102,4 +127,4 @@ if __name__ == "__main__":
     server.connect()
     Thread(target=client.recv).start()
     Thread(target=server.recv).start()
-    
+    Thread(target=server.ping_time_out).start() 
